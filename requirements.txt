@@ -1,0 +1,4 @@
+mcp[cli]
+anthropic
+gspread
+python-dotenv
