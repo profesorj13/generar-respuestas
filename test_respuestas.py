@@ -172,14 +172,21 @@ async def main():
     parser = argparse.ArgumentParser(description="Test de respuestas IA vs producto.")
     parser.add_argument("--desde", type=int, default=FILA_DESDE)
     parser.add_argument("--hasta", type=int, default=FILA_HASTA)
+    parser.add_argument("--filas", type=str, default=None,
+                        help="Filas específicas separadas por coma (ej: 136,137,140). Ignora --desde/--hasta.")
     parser.add_argument("--concurrencia", type=int, default=CONCURRENCIA,
                         help="Máximo de filas procesadas en paralelo (default: 1)")
     parser.add_argument("--model", type=str, default=None,
                         help="Modelo a usar (default: el de responder_tickets.py)")
     args = parser.parse_args()
 
-    fila_desde = args.desde
-    fila_hasta = args.hasta
+    if args.filas:
+        filas_target = [int(f.strip()) for f in args.filas.split(",")]
+    else:
+        filas_target = list(range(args.desde, args.hasta + 1))
+
+    fila_desde = min(filas_target)
+    fila_hasta = max(filas_target)
     concurrencia = args.concurrencia
     model_override = args.model
 
@@ -187,7 +194,10 @@ async def main():
         print("ERROR: SHEET_URL no está definida en .env")
         sys.exit(1)
 
-    print(f"Test de respuestas — filas {fila_desde} a {fila_hasta}")
+    if args.filas:
+        print(f"Test de respuestas — filas {args.filas}")
+    else:
+        print(f"Test de respuestas — filas {fila_desde} a {fila_hasta}")
     print(f"Modelo: {model_override or 'default (sonnet)'}")
     print(f"Concurrencia: {concurrencia} filas en paralelo")
     print(f"Output: {OUTPUT_PATH}\n")
@@ -225,7 +235,7 @@ async def main():
 
             # Preparar tareas para todas las filas válidas
             tasks = []
-            for fila_num in range(fila_desde, fila_hasta + 1):
+            for fila_num in filas_target:
                 idx = fila_num - 1
                 if idx < 1 or idx >= len(filas):
                     print(f"  Fila {fila_num}: fuera de rango, saltando")
