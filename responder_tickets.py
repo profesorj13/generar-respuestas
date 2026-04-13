@@ -166,9 +166,8 @@ LÍMITE
 
 CIERRE_LARGO = (
     "\n\n"
-    "Pueden continuar avanzando con la DJ en las secciones sin bloqueos "
-    "mientras se resuelven estas consultas. Si necesitan hacer seguimiento, "
-    "referencien el número de este ticket en cualquier nuevo reclamo."
+    "Si necesitan hacer seguimiento, referencien el número de este ticket "
+    "en cualquier nuevo reclamo."
 )
 
 CIERRE_CORTO = (
