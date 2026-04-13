@@ -1,8 +1,8 @@
 """
-Extraer tickets respondidos por producto desde Google Sheets.
+Extraer tickets con las tres columnas para análisis de calidad de respuestas IA.
 
-Lee col V (consulta) + col Z (respuesta de producto) y guarda
-en inputs/tickets_respondidos.csv las filas que tienen respuesta.
+Lee col V (consulta) + col Y (respuesta sugerida por IA) + col Z (respuesta de producto)
+y guarda en inputs/comparacion_respuestas.csv las filas que tienen las tres columnas completas.
 
 Uso:
     python extraer_respondidos.py "https://docs.google.com/spreadsheets/d/SHEET_ID/edit"
@@ -19,10 +19,11 @@ load_dotenv(Path(__file__).parent / ".env")
 
 CREDENTIALS_DIR = Path(__file__).parent / "credentials"
 WORKSHEET_NAME = "DJ de cursos y docentes"
-OUTPUT_PATH = Path(__file__).parent.parent / "inputs" / "tickets_respondidos.csv"
+OUTPUT_PATH = Path(__file__).parent.parent / "inputs" / "comparacion_respuestas.csv"
 
-COL_CONSULTA = 22  # V
-COL_RESPUESTA_PRODUCTO = 26  # Z
+COL_CONSULTA = 22         # V — consulta del usuario
+COL_RESPUESTA_IA = 25     # Y — respuesta sugerida por la IA
+COL_RESPUESTA_PRODUCTO = 26  # Z — respuesta ideal de producto
 
 
 def encontrar_credenciales() -> Path:
@@ -49,30 +50,37 @@ def main():
     total = len(filas) - 1
     print(f"Sheet: {ws.title} — {total} filas")
 
-    # Extraer filas con respuesta de producto
-    respondidos = []
+    # Extraer filas con las tres columnas completas
+    completos = []
     for i, fila in enumerate(filas[1:], start=2):
         consulta = fila[COL_CONSULTA - 1] if len(fila) >= COL_CONSULTA else ""
-        respuesta = fila[COL_RESPUESTA_PRODUCTO - 1] if len(fila) >= COL_RESPUESTA_PRODUCTO else ""
+        respuesta_ia = fila[COL_RESPUESTA_IA - 1] if len(fila) >= COL_RESPUESTA_IA else ""
+        respuesta_producto = fila[COL_RESPUESTA_PRODUCTO - 1] if len(fila) >= COL_RESPUESTA_PRODUCTO else ""
 
-        if consulta and respuesta:
-            respondidos.append({
+        if consulta and respuesta_ia and respuesta_producto:
+            completos.append({
                 "fila": i,
                 "consulta": consulta,
-                "respuesta_producto": respuesta,
+                "respuesta_ia": respuesta_ia,
+                "respuesta_producto": respuesta_producto,
             })
+
+    print(f"\nPre-extracción:")
+    print(f"  Total filas: {total}")
+    print(f"  Con las 3 columnas completas: {len(completos)}")
+    print(f"  Sin las 3 columnas: {total - len(completos)}")
+
+    if not completos:
+        print("\nNo hay filas con las tres columnas completas. No se genera archivo.")
+        return
 
     # Escribir CSV
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(OUTPUT_PATH, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["fila", "consulta", "respuesta_producto"])
+        writer = csv.DictWriter(f, fieldnames=["fila", "consulta", "respuesta_ia", "respuesta_producto"])
         writer.writeheader()
-        writer.writerows(respondidos)
+        writer.writerows(completos)
 
-    print(f"\nResultado:")
-    print(f"  Total filas: {total}")
-    print(f"  Con respuesta de producto: {len(respondidos)}")
-    print(f"  Sin respuesta: {total - len(respondidos)}")
     print(f"  Guardado en: {OUTPUT_PATH}")
 
 
