@@ -107,10 +107,19 @@ REGLAS DE CONTENIDO
   2. Solo si el nombre del cargo suena inusual o el usuario pregunta explícitamente si el cargo existe, buscá en el catálogo para verificarlo internamente.
   3. REGLA CRÍTICA: el catálogo de cargos es una herramienta INTERNA tuya. NUNCA le digas al usuario si un cargo "es válido para nivel X" ni "figura en el catálogo oficial". Esa información la usás solo para decidir tu respuesta. Al usuario dale directamente la acción: esperar el plazo, consultar al supervisor, o derivar al portal.
 - Cuando el ticket mencione roles, cargos o denominaciones docentes en OTRO contexto (asignación de horas, carga horaria, etc.), ahí sí buscá directamente en el catálogo de cargos por nivel.
-- SELF-SERVICE PRIMERO: si el usuario pide que "el equipo haga algo" o "carguen datos" que el propio colegio puede hacer desde el sistema (editar plan de estudios, crear cursos, asignar docentes, dar de baja cargos), siempre enseñales cómo hacerlo ellos mismos con la ruta exacta en el sistema. Solo derivá al portal de solicitudes cuando la operación genuinamente requiere intervención del equipo de datos (corrección de DNI, nombres, autoridades faltantes por migración, etc.).
+- SELF-SERVICE PRIMERO: si el usuario pide que "el equipo haga algo" o "carguen datos" que el propio colegio puede hacer desde el sistema (editar plan de estudios, crear cursos, asignar docentes, dar de baja cargos, dar de baja docentes), siempre enseñales cómo hacerlo ellos mismos con la ruta exacta en el sistema. Solo derivá al portal de solicitudes cuando la operación genuinamente requiere intervención del equipo de datos (corrección de DNI, nombres, autoridades faltantes por migración, etc.).
 - SELF-SERVICE incluye ALTA DE ALUMNOS: si el usuario envía datos de alumnos nuevos (nombre, DNI, fecha nacimiento), primero indícales cómo cargarlos desde Menú - Personas - Estudiantes - Agregar estudiante. Solo derivá al portal si se trata de CORRECCIONES a datos de alumnos ya cargados.
-- Cuando el usuario diga que "no puede editar", "no le permite modificar" o "no encuentra cómo hacer cambios", cubrí AMBAS causas posibles: (1) el estado de la DJ puede estar bloqueando la edición (firmada/presentada), y (2) la operación puede hacerse desde otro lugar del sistema según el tipo (ej. docentes a cargo desde el detalle del curso, asignaturas desde el curso, cargos desde Cargos y Horas).
+- SELF-SERVICE incluye BAJA DE DOCENTES: si el usuario dice "el docente ya no trabaja acá" o "quiero sacar a Juan de la nómina", indicales el flujo de baja desde Personas - Docentes - menú del docente - Dar de baja. Aclarar que NO se pueden dar de baja autoridades (director, vice, secretario), rol legal (Representante Legal, Apoderado Legal) ni cargos no frente a curso; en esos casos hay que desasignar el cargo bloqueante primero o derivar al portal si no se puede.
+- Cuando el usuario diga que "no puede editar", "no le permite modificar" o "no encuentra cómo hacer cambios", cubrí TRES causas posibles: (1) el estado de la DJ puede estar bloqueando la edición (firmada/presentada), (2) la operación puede hacerse desde otro lugar del sistema según el tipo (ej. docentes a cargo desde el detalle del curso, asignaturas desde el curso, cargos desde Cargos y Horas), y (3) la edición de datos personales de alumnos/docentes depende de una feature flag por colegio — si el colegio no ve los campos editables, derivar al portal. Para datos de tipo y número de documento la edición siempre va por el portal.
 - Si el usuario reporta que NO hay datos migrados (ni docentes, ni estudiantes, ni conducción), sugerí verificar que el trámite de DJ se haya iniciado desde la claverrama correcta del establecimiento. Es una causa frecuente de listados vacíos.
+- GRUPOS (Educación Física / Idioma) solo existen en nivel Medio. Si el colegio no es de nivel Medio y pregunta por la pestaña Grupos, respondé directo: "la pestaña Grupos es exclusiva de nivel Medio; en su nivel esa funcionalidad no existe." En grupos de Ed. Física e Idioma tampoco se declara el cargo del docente — el cargo se registra en la asignatura o en Cargos y Horas.
+- PLANES DE ESTUDIO ya no requieren declarar cantidad de años. Si el usuario pregunta "cómo defino la cantidad de años" o "no me deja elegir si son 5 o 6 años", respondé que ese campo fue quitado: ahora se eligen directamente los grados a usar dentro del plan.
+- HORARIOS DE ASIGNATURAS antes de las 07:00 ya están habilitados. Si reportan que no los dejaba cargar horarios tempranos (06:55, 06:30, etc.), respondé que ya se puede cargar cualquier hora de inicio.
+- VALIDACIÓN BLOQUEANTE en Presentación: si el usuario reporta que no puede presentar la DJ y el error dice "No hay horarios de funcionamiento configurados", derivá a Datos Institucionales para cargar el horario de funcionamiento de categoría General. Al guardar, el bloqueo desaparece.
+- MOVIMIENTOS +/- en Presentación: si preguntan qué significa +X o -X en las tablas de cursos/cargos de la pestaña Presentación, explicá que es la diferencia entre altas y bajas de aporte (ej. +1 significa que hay un cargo más con aporte respecto del ciclo anterior, considerando altas menos bajas).
+- PDF del trámite — reglas: si preguntan por qué un cargo frente a curso no aparece en el PDF, aclará que el PDF solo lista los cargos de "Cargos y Horas" (no-frente-a-curso) a propósito. Si preguntan por las autoridades legales del PDF, aclará que salen los Representantes Legales y Apoderados Legales declarados por sistema, NO los usuarios con rol Legal (los roles son permisos de acceso, no autoridades).
+- BAJA DE DOCENTES: si un colegio quiere sacar a alguien de la nómina, el flujo es Personas - Docentes - menú del docente - Dar de baja. El docente queda archivado en la pestaña "Dados de baja". Si el docente tiene cargo de autoridad, rol legal o cargo no-frente-a-curso, la baja está bloqueada — primero hay que desasignar el cargo o, si no se puede desde UI, derivar al portal.
+- WARNINGS DE HORAS (72hs, horas permitidas por cargo, horas excedidas) ya no se muestran desde el release 2026-04-14. Si un colegio pregunta por esos warnings o el modal de "horas permitidas", aclará que fueron removidos porque generaban falsos positivos. Cargar las horas reales del cargo sin preocuparse por esa advertencia.
 - Cuando la respuesta mencione el importador CSV de estudiantes, incluí siempre el link al instructivo: https://docs.google.com/document/d/1AUVa99FuZzzwvpRPLLJusRyQInsxNaOQuvMAflJnU-o/edit?tab=t.0
 - Cuando derives al portal de solicitudes, indicá la sección/opción exacta a seleccionar. Ejemplo: "seleccionen la opción 'Docentes - Dato incorrecto en docente'" o "'Estudiantes - Dato incorrecto en alumno'".
 - Respondé SOLO con lo que está en la documentación que obtuviste con las tools + el contexto inyectado. NO inventes pasos, nombres de pantalla ni botones que no estén citados.
@@ -160,8 +169,13 @@ LENGUAJE — PROHIBIDO USAR TÉRMINOS TÉCNICOS EN INGLÉS
 NOTAS INTERNAS
 - Cualquier texto entre //...// en la consulta es contexto del equipo. Usalo para entender el caso pero NO lo cites en la respuesta final.
 
-LÍMITE
-- La respuesta final (sin contar el cierre estándar que agrega el sistema) debe ser de máximo 1500 caracteres. El cierre añade unos 400 más para cumplir el tope de 2000 de BA Colaborativa.
+LÍMITE Y COMPACTACIÓN
+- La respuesta final (sin contar el cierre estándar que agrega el sistema) debe ser de MÁXIMO 1700 caracteres. El cierre añade ~110 chars para cumplir el tope de 2000 de BA Colaborativa.
+- Técnicas obligatorias para mantenerte dentro del budget:
+  - Una sola ruta o acción por subtema. Si hay dos formas de hacer algo, elegí la más directa y omití la alternativa.
+  - Prohibido usar frases puente o de encuadre antes de la respuesta: "Te compartimos lo siguiente", "En relación a tu consulta", "Respondemos sus consultas", "Procedemos a indicar". Ir directo al primer paso accionable después de "Buenos días.".
+  - Para timing de nombramientos, una sola oración con los dos escenarios (ej: "Si pasaron menos de 10 días hábiles, esperen y consulten al supervisor pedagógico; si pasaron más, deriven al portal de solicitudes con los datos del cargo.").
+  - Si el ticket toca muchos temas, priorizá los bloqueos sobre las consultas informativas (regla ya enunciada en ESTRUCTURA OBLIGATORIA punto 7) y sé breve en cada bloque.
 """
 
 CIERRE_LARGO = (
@@ -171,9 +185,7 @@ CIERRE_LARGO = (
 )
 
 CIERRE_CORTO = (
-    "\n\n"
-    "Si necesitan hacer seguimiento, referencien el número de este ticket "
-    "en cualquier nuevo reclamo."
+    "\n\nPara seguimiento, referencien este ticket en nuevos reclamos."
 )
 
 SIN_CONTEXTO_BODY = (
@@ -222,11 +234,12 @@ TOOLS_SCHEMA = [
 
 # --- Google Sheets ---
 
-WORKSHEET_NAME = "DJ de cursos y docentes"
+WORKSHEET_NAME = "Tickets - General"
 
-COL_PREGUNTA = 22   # V
-COL_RESPUESTA = 25  # Y
-COL_CONTROL = 26    # Z — respuesta final de producto (control humano)
+COL_OBSERVACIONES = 21  # U — flag manual de producto (ej: "F" para forzar respuesta)
+COL_PREGUNTA = 22       # V
+COL_RESPUESTA = 25      # Y
+COL_CONTROL = 26        # Z — respuesta final de producto (control humano)
 MAX_PENDIENTES = 100
 
 
@@ -532,10 +545,86 @@ RE_BLANKLINES = re.compile(r"\n{3,}")
 RE_THINKING_LEAK = re.compile(r"^.*?(?=Buenos d[ií]as[\.\,\s])", flags=re.DOTALL | re.IGNORECASE)
 
 
-def validar_y_postprocesar(respuesta_cruda: str) -> tuple[str, str]:
+COMPRESSION_SYSTEM = (
+    "Sos un editor que reescribe respuestas de soporte de SINIGEP para que "
+    "cumplan el límite de 1700 caracteres. Tu única tarea es compactar el texto "
+    "que recibís preservando 100% del contenido accionable.\n\n"
+    "REGLAS:\n"
+    "- Preservá TODAS las acciones, rutas (Menú - Personas - …), botones, "
+    "pasos numerados (1., 2., 3.) y links exactos (no acortes URLs).\n"
+    "- Eliminá solo frases transicionales, repeticiones y explicaciones "
+    "redundantes.\n"
+    "- Mantené el saludo 'Buenos días.' al inicio.\n"
+    "- NO agregues cierre ni despedida (ni 'Quedamos a disposición', ni "
+    "'Muchas gracias', ni 'Saludos').\n"
+    "- Plain text. Prohibido: exclamaciones (! ¡), markdown (**, __, ##), "
+    "emojis, caracteres < > { }.\n"
+    "- Hablá siempre en plural ('ustedes', 'les'), nunca en singular ni en "
+    "tercera persona ('la institución').\n"
+    "- Sin términos técnicos en inglés (path → ruta, dropdown → menú "
+    "desplegable, click → hacer clic, etc.).\n"
+    "- Devolvé SOLO el texto reescrito, sin explicar qué hiciste."
+)
+
+
+async def comprimir_respuesta(
+    cuerpo: str,
+    client: AsyncAnthropic,
+    model: str,
+) -> str:
+    """
+    Reescribe `cuerpo` para que entre en 1700 chars preservando acciones y links.
+    Devuelve el texto comprimido (puede aún exceder si el modelo no logró acortar).
+    """
+    user_msg = (
+        f"Reescribí esta respuesta en máximo 1700 caracteres siguiendo todas las "
+        f"reglas del sistema. La respuesta original tiene {len(cuerpo)} chars:\n\n"
+        f"---\n{cuerpo}\n---"
+    )
+    resp = await client.messages.create(
+        model=model,
+        max_tokens=1600,
+        system=COMPRESSION_SYSTEM,
+        messages=[{"role": "user", "content": user_msg}],
+    )
+    textos = [b.text for b in resp.content if getattr(b, "type", None) == "text"]
+    return "\n".join(textos).strip()
+
+
+def _limpiar_formato(texto: str) -> str:
+    """Aplica las regex de limpieza al texto en bruto."""
+    limpio = RE_MARKERS_INTERNOS.sub("", texto)
+    limpio = RE_MARKDOWN.sub("", limpio)
+    limpio = RE_ANGULOS.sub("", limpio)
+    limpio = RE_EXCLAMACION.sub("", limpio)
+    limpio = RE_EMOJI.sub("", limpio)
+    return RE_BLANKLINES.sub("\n\n", limpio).strip()
+
+
+def _con_cierre_dentro_de_limite(limpio: str) -> str | None:
+    """Intenta appendear cierre largo o corto. Devuelve None si ninguno entra."""
+    final_largo = limpio + CIERRE_LARGO
+    if len(final_largo) <= MAX_RESPUESTA_CHARS:
+        return final_largo
+    final_corto = limpio + CIERRE_CORTO
+    if len(final_corto) <= MAX_RESPUESTA_CHARS:
+        return final_corto
+    return None
+
+
+async def validar_y_postprocesar(
+    respuesta_cruda: str,
+    client: AsyncAnthropic,
+    model: str,
+) -> tuple[str, str]:
     """
     Aplica limpieza, validaciones de formato, append del cierre y check de longitud.
-    Devuelve (respuesta_final, estado) donde estado ∈ {OK, NO_CONSULTA, SIN_CONTEXTO, EXCEDE_LIMITE, VACIA}.
+    Si el cuerpo + cierre supera MAX_RESPUESTA_CHARS, hace un retry de compresión
+    con el LLM y reintenta una vez. Solo marca EXCEDE_LIMITE si tras el retry
+    sigue sin entrar.
+
+    Devuelve (respuesta_final, estado) donde estado ∈
+    {OK, COMPRIMIDA, NO_CONSULTA, SIN_CONTEXTO, EXCEDE_LIMITE, VACIA}.
     """
     texto = (respuesta_cruda or "").strip()
 
@@ -558,25 +647,28 @@ def validar_y_postprocesar(respuesta_cruda: str) -> tuple[str, str]:
     if m and m.start() > 0:
         texto = texto[m.start():].strip()
 
-    limpio = RE_MARKERS_INTERNOS.sub("", texto)
-    limpio = RE_MARKDOWN.sub("", limpio)
-    limpio = RE_ANGULOS.sub("", limpio)
-    limpio = RE_EXCLAMACION.sub("", limpio)
-    limpio = RE_EMOJI.sub("", limpio)
-    limpio = RE_BLANKLINES.sub("\n\n", limpio).strip()
+    limpio = _limpiar_formato(texto)
 
-    # Cierre adaptativo: preferimos el largo, pero si no entra usamos el corto
-    # para priorizar el valor de la respuesta al usuario antes que la cortesía.
-    final_largo = limpio + CIERRE_LARGO
-    if len(final_largo) <= MAX_RESPUESTA_CHARS:
-        return (final_largo, "OK")
+    # Primer intento: cierre adaptativo con el cuerpo original.
+    final = _con_cierre_dentro_de_limite(limpio)
+    if final is not None:
+        return (final, "OK")
 
-    final_corto = limpio + CIERRE_CORTO
-    if len(final_corto) <= MAX_RESPUESTA_CHARS:
-        return (final_corto, "OK")
+    # Overflow → retry de compresión con el LLM.
+    try:
+        comprimido_crudo = await comprimir_respuesta(limpio, client, model)
+    except Exception as e:
+        print(f"  WARN: comprimir_respuesta falló ({e}), marcando EXCEDE_LIMITE.")
+        marcado = f"[EXCEDE LIMITE {len(limpio + CIERRE_CORTO)} chars]\n\n{limpio + CIERRE_CORTO}"
+        return (marcado, "EXCEDE_LIMITE")
 
-    # Ni con el cierre corto entra — el cuerpo solo ya es demasiado largo.
-    marcado = f"[EXCEDE LIMITE {len(final_corto)} chars]\n\n{final_corto}"
+    comprimido = _limpiar_formato(comprimido_crudo)
+    final = _con_cierre_dentro_de_limite(comprimido)
+    if final is not None:
+        return (final, "COMPRIMIDA")
+
+    # Tras compresión sigue sin entrar — marcamos para revisión manual.
+    marcado = f"[EXCEDE LIMITE {len(comprimido + CIERRE_CORTO)} chars tras compresión]\n\n{comprimido + CIERRE_CORTO}"
     return (marcado, "EXCEDE_LIMITE")
 
 
@@ -588,6 +680,9 @@ async def procesar_sheet(
     anthropic_client: AsyncAnthropic,
     worksheet: gspread.Worksheet,
     force_regen: bool,
+    from_row: int = 2,
+    regen_pattern: str | None = None,
+    obs_flag: str | None = None,
 ):
     filas = worksheet.get_all_values()
     total = len(filas) - 1
@@ -601,20 +696,39 @@ async def procesar_sheet(
         print(f"Clave rama detectada en columna {col_claverrama}.")
 
     print(f"\nTotal de filas (sin header): {total}")
-    print(f"Modo force-regen: {force_regen}")
+    print(
+        f"Modo force-regen: {force_regen}  from_row={from_row}  "
+        f"regen_pattern={regen_pattern!r}  obs_flag={obs_flag!r}"
+    )
 
     for i, fila in enumerate(filas[1:], start=2):
         if procesadas >= MAX_PENDIENTES:
             print(f"\nLímite de {MAX_PENDIENTES} alcanzado, frenando.")
             break
 
+        if i < from_row:
+            continue
+
         pregunta = fila[COL_PREGUNTA - 1] if len(fila) >= COL_PREGUNTA else ""
         control = fila[COL_CONTROL - 1] if len(fila) >= COL_CONTROL else ""
         respuesta_existente = fila[COL_RESPUESTA - 1] if len(fila) >= COL_RESPUESTA else ""
+        observaciones = fila[COL_OBSERVACIONES - 1] if len(fila) >= COL_OBSERVACIONES else ""
 
         if not pregunta or control:
             continue
-        if respuesta_existente and not force_regen:
+
+        if obs_flag is not None:
+            # Solo procesar filas donde col U (Observaciones) sea exactamente el flag.
+            if observaciones.strip().upper() != obs_flag.strip().upper():
+                continue
+            # Bajo --obs-flag respetamos "solo si no tiene respuesta" salvo --force-regen.
+            if respuesta_existente and not force_regen:
+                continue
+        elif regen_pattern is not None:
+            # Modo selectivo: solo regenerar filas cuya respuesta actual contenga el patrón.
+            if regen_pattern not in respuesta_existente:
+                continue
+        elif respuesta_existente and not force_regen:
             continue
 
         clave_rama = ""
@@ -670,7 +784,9 @@ async def procesar_sheet(
         if respuesta_cruda is None:
             continue
 
-        respuesta_final, estado = validar_y_postprocesar(respuesta_cruda)
+        respuesta_final, estado = await validar_y_postprocesar(
+            respuesta_cruda, anthropic_client, MODEL,
+        )
         contadores[estado] = contadores.get(estado, 0) + 1
         print(f"  → estado={estado}  tool_calls={tool_calls}  chars={len(respuesta_final)}")
 
@@ -692,6 +808,31 @@ async def main():
         "--force-regen",
         action="store_true",
         help="Reescribir respuestas existentes en col Y (por defecto se saltan).",
+    )
+    parser.add_argument(
+        "--from-row",
+        type=int,
+        default=2,
+        help="Empezar desde esta fila (1-based, header=1). Default: 2.",
+    )
+    parser.add_argument(
+        "--regen-pattern",
+        type=str,
+        default=None,
+        help=(
+            "Solo regenerar filas cuya respuesta actual contenga este substring. "
+            "Ej: --regen-pattern '[EXCEDE LIMITE'. Tiene precedencia sobre --force-regen."
+        ),
+    )
+    parser.add_argument(
+        "--obs-flag",
+        type=str,
+        default=None,
+        help=(
+            "Procesar SOLO filas cuya col U (Observaciones) coincida exactamente con este "
+            "valor (case-insensitive). Por defecto respeta 'no pisar respuesta existente' "
+            "salvo que se combine con --force-regen. Ej: --obs-flag F"
+        ),
     )
     args = parser.parse_args()
 
@@ -719,7 +860,15 @@ async def main():
                 print(f"ERROR: el MCP no expone {MCP_FILESYSTEM_TOOL}. Abortando.")
                 sys.exit(1)
 
-            await procesar_sheet(session, anthropic_client, worksheet, args.force_regen)
+            await procesar_sheet(
+                session,
+                anthropic_client,
+                worksheet,
+                force_regen=args.force_regen,
+                from_row=args.from_row,
+                regen_pattern=args.regen_pattern,
+                obs_flag=args.obs_flag,
+            )
 
     print("Listo.")
 

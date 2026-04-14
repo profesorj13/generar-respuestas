@@ -34,6 +34,7 @@ from responder_tickets import (
     MCP_URL,
     MCP_SEARCH_TOOL,
     MCP_FILESYSTEM_TOOL,
+    MODEL,
 )
 from claverrama import inferir_nivel, NIVEL_DESCONOCIDO
 
@@ -147,7 +148,9 @@ async def procesar_fila(
                 "respuesta_producto": respuesta_producto,
             }
 
-        respuesta_final, estado = validar_y_postprocesar(respuesta_cruda)
+        respuesta_final, estado = await validar_y_postprocesar(
+            respuesta_cruda, anthropic_client, MODEL,
+        )
         elapsed = time.time() - t0
 
         print(

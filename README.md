@@ -95,7 +95,7 @@ Después de que Claude genera la respuesta, el script:
 - `MAX_RESPUESTA_CHARS = 2000` — límite de BA Colaborativa
 - `MAX_HISTORIAL = 3` — tickets previos del mismo establecimiento a inyectar
 - `MODEL = "claude-sonnet-4-20250514"`
-- `WORKSHEET_NAME = "DJ de cursos y docentes"` — pestaña del Sheet principal
+- `WORKSHEET_NAME = "Tickets - General"` — pestaña del Sheet principal
 - `extraer_cargos.py` (mantenimiento, no runtime) lee la hoja `Lista para ABAP` del sheet de cargos (URL hardcoded en el script) y escribe `context/cargos-por-nivel.md` como insumo para actualizar Mintlify.
 
 ## TODOs diferidos (fase 2)

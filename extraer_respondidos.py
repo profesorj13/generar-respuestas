@@ -18,7 +18,7 @@ import gspread
 load_dotenv(Path(__file__).parent / ".env")
 
 CREDENTIALS_DIR = Path(__file__).parent / "credentials"
-WORKSHEET_NAME = "DJ de cursos y docentes"
+WORKSHEET_NAME = "Tickets - General"
 OUTPUT_PATH = Path(__file__).parent.parent / "inputs" / "comparacion_respuestas.csv"
 
 COL_CONSULTA = 22         # V — consulta del usuario
