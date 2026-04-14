@@ -529,7 +529,7 @@ RE_EMOJI = re.compile(
     flags=re.UNICODE,
 )
 RE_BLANKLINES = re.compile(r"\n{3,}")
-RE_THINKING_LEAK = re.compile(r"^.*?(?=Hola[\.\,\s])", flags=re.DOTALL)
+RE_THINKING_LEAK = re.compile(r"^.*?(?=Buenos d[ií]as[\.\,\s])", flags=re.DOTALL | re.IGNORECASE)
 
 
 def validar_y_postprocesar(respuesta_cruda: str) -> tuple[str, str]:
@@ -553,9 +553,10 @@ def validar_y_postprocesar(respuesta_cruda: str) -> tuple[str, str]:
         )
         return (cuerpo, "SIN_CONTEXTO")
 
-    # Cortar "thinking" que el modelo a veces escribe antes de "Hola."
-    if "Hola" in texto and not texto.startswith("Hola"):
-        texto = RE_THINKING_LEAK.sub("", texto).strip()
+    # Cortar "thinking" que el modelo a veces escribe antes de "Buenos días."
+    m = re.search(r"Buenos d[ií]as[\.\,\s]", texto, flags=re.IGNORECASE)
+    if m and m.start() > 0:
+        texto = texto[m.start():].strip()
 
     limpio = RE_MARKERS_INTERNOS.sub("", texto)
     limpio = RE_MARKDOWN.sub("", limpio)
