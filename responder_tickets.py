@@ -17,8 +17,11 @@ Requisitos:
 
 import argparse
 import asyncio
+import hashlib
+import logging
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -43,6 +46,26 @@ from core_rag import (
 load_dotenv(Path(__file__).parent / ".env")
 
 CREDENTIALS_DIR = Path(__file__).parent / "credentials"
+LOG_DIR = Path(__file__).parent / "logs"
+LOGGER_NAME = "responder_tickets"
+
+
+def setup_logging() -> tuple[logging.Logger, Path]:
+    """Crea un archivo de log por corrida y lo conecta al logger + stdout."""
+    LOG_DIR.mkdir(exist_ok=True)
+    log_path = LOG_DIR / f"run-{datetime.now().strftime('%Y%m%d-%H%M%S')}.log"
+    logger = logging.getLogger(LOGGER_NAME)
+    logger.setLevel(logging.INFO)
+    logger.handlers.clear()
+    formato = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    fh = logging.FileHandler(log_path, encoding="utf-8")
+    fh.setFormatter(formato)
+    sh = logging.StreamHandler()
+    sh.setFormatter(formato)
+    logger.addHandler(fh)
+    logger.addHandler(sh)
+    logger.propagate = False
+    return logger, log_path
 
 MAX_RESPUESTA_CHARS = 2000
 MAX_HISTORIAL = 3  # tickets previos del mismo establecimiento a inyectar
@@ -298,7 +321,9 @@ async def validar_y_postprocesar(
     try:
         comprimido_crudo = await comprimir_respuesta(limpio, client, model)
     except Exception as e:
-        print(f"  WARN: comprimir_respuesta falló ({e}), marcando EXCEDE_LIMITE.")
+        logging.getLogger(LOGGER_NAME).warning(
+            f"comprimir_respuesta falló ({e}), marcando EXCEDE_LIMITE"
+        )
         marcado = f"[EXCEDE LIMITE {len(limpio + CIERRE_CORTO)} chars]\n\n{limpio + CIERRE_CORTO}"
         return (marcado, "EXCEDE_LIMITE")
 
@@ -310,6 +335,77 @@ async def validar_y_postprocesar(
     # Tras compresión sigue sin entrar — marcamos para revisión manual.
     marcado = f"[EXCEDE LIMITE {len(comprimido + CIERRE_CORTO)} chars tras compresión]\n\n{comprimido + CIERRE_CORTO}"
     return (marcado, "EXCEDE_LIMITE")
+
+
+# --- Escritura segura al Sheet ---
+
+
+def _normalizar_pregunta(texto: str) -> str:
+    """Normaliza la pregunta para comparar: trim + colapso de espacios."""
+    return re.sub(r"\s+", " ", (texto or "").strip())
+
+
+def _pregunta_hash(texto: str) -> str:
+    return hashlib.sha1(_normalizar_pregunta(texto).encode("utf-8")).hexdigest()[:10]
+
+
+def _resolver_fila_destino(
+    worksheet: gspread.Worksheet,
+    fila_snapshot: int,
+    pregunta_esperada: str,
+    logger: logging.Logger,
+) -> int | None:
+    """
+    Valida que la fila `fila_snapshot` siga conteniendo `pregunta_esperada`
+    en col V del Sheet vivo. Si no, busca la fila real por coincidencia
+    exacta de pregunta en col V. Devuelve la fila donde escribir, o None
+    si no se puede resolver unívocamente (0 o >1 coincidencias).
+
+    El helper existe porque el caller usa un snapshot congelado con
+    get_all_values(), pero el Sheet puede cambiar en vivo mientras
+    corremos (producto inserta/elimina filas).
+    """
+    pregunta_norm = _normalizar_pregunta(pregunta_esperada)
+    if not pregunta_norm:
+        return None
+
+    try:
+        celda_actual = worksheet.cell(fila_snapshot, COL_PREGUNTA).value or ""
+    except Exception as e:
+        logger.error(f"fila_snapshot={fila_snapshot}: error leyendo celda V: {e}")
+        return None
+
+    if _normalizar_pregunta(celda_actual) == pregunta_norm:
+        return fila_snapshot
+
+    # Desfasaje: buscar la fila real por pregunta exacta en col V.
+    try:
+        matches = worksheet.findall(pregunta_esperada, in_column=COL_PREGUNTA)
+    except Exception as e:
+        logger.error(
+            f"fila_snapshot={fila_snapshot}: error en findall por pregunta: {e}"
+        )
+        return None
+
+    candidatos = [
+        m.row for m in matches
+        if _normalizar_pregunta(m.value) == pregunta_norm and m.row >= 2
+    ]
+
+    if len(candidatos) == 1:
+        return candidatos[0]
+
+    if not candidatos:
+        logger.warning(
+            f"fila_snapshot={fila_snapshot}: pregunta ya no existe en el Sheet "
+            f"(hash={_pregunta_hash(pregunta_esperada)}), skip escritura"
+        )
+    else:
+        logger.warning(
+            f"fila_snapshot={fila_snapshot}: pregunta ambigua "
+            f"({len(candidatos)} coincidencias en col V: {candidatos}), skip escritura"
+        )
+    return None
 
 
 # --- Procesamiento ---
@@ -326,7 +422,9 @@ async def procesar_sheet(
     max_pendientes: int = MAX_PENDIENTES,
     only_row: int | None = None,
     pending_only: bool = False,
+    not_sent_only: bool = False,
 ):
+    logger = logging.getLogger(LOGGER_NAME)
     filas = worksheet.get_all_values()
     total = len(filas) - 1
     procesadas = 0
@@ -334,19 +432,20 @@ async def procesar_sheet(
 
     col_claverrama = detectar_col_claverrama(filas[0] if filas else [])
     if col_claverrama is None:
-        print("WARN: no se encontró columna clave rama en el header. Siguiendo sin clave rama ni historial.")
+        logger.warning("no se encontró columna clave rama en el header. Siguiendo sin clave rama ni historial.")
     else:
-        print(f"Clave rama detectada en columna {col_claverrama}.")
+        logger.info(f"clave rama detectada en columna {col_claverrama}")
 
-    print(f"\nTotal de filas (sin header): {total}")
-    print(
-        f"Modo force-regen: {force_regen}  from_row={from_row}  "
-        f"regen_pattern={regen_pattern!r}  obs_flag={obs_flag!r}"
+    logger.info(f"total de filas (sin header): {total}")
+    logger.info(
+        f"modo force-regen={force_regen} from_row={from_row} "
+        f"regen_pattern={regen_pattern!r} obs_flag={obs_flag!r} "
+        f"pending_only={pending_only} max={max_pendientes}"
     )
 
     for i, fila in enumerate(filas[1:], start=2):
         if procesadas >= max_pendientes:
-            print(f"\nLímite de {max_pendientes} alcanzado, frenando.")
+            logger.info(f"límite de {max_pendientes} alcanzado, frenando")
             break
 
         if only_row is not None and i != only_row:
@@ -366,6 +465,13 @@ async def procesar_sheet(
             cerrada = fila[COL_CERRADA_PRODUCTO - 1].strip().lower() if len(fila) >= COL_CERRADA_PRODUCTO else ""
             respondido = fila[COL_RESPONDIDO - 1].strip().lower() if len(fila) >= COL_RESPONDIDO else ""
             if cerrada != "no" or respondido != "no":
+                continue
+
+        if not_sent_only:
+            # Criterio amplio: sin respuesta de producto (Z vacía, ya cubierto por
+            # `control` arriba) y no enviado al colegio (AF ≠ "Sí"). No mira AA.
+            respondido = fila[COL_RESPONDIDO - 1].strip().lower() if len(fila) >= COL_RESPONDIDO else ""
+            if respondido in ("sí", "si"):
                 continue
 
         if obs_flag is not None:
@@ -394,11 +500,12 @@ async def procesar_sheet(
             fila_actual=i,
         )
 
-        print(
-            f"[{procesadas + 1}/{MAX_PENDIENTES}] Fila {i}: "
-            f"clave={clave_rama or '—'} nivel={nivel} historial={len(historial)}"
+        p_hash = _pregunta_hash(pregunta)
+        logger.info(
+            f"[{procesadas + 1}/{max_pendientes}] fila_snapshot={i} "
+            f"clave={clave_rama or '—'} nivel={nivel} historial={len(historial)} "
+            f"pregunta_hash={p_hash} pregunta_preview={pregunta[:80]!r}"
         )
-        print(f"  Consulta: {pregunta[:80]}...")
 
         last_error = None
         respuesta_cruda = None
@@ -419,15 +526,15 @@ async def procesar_sheet(
                 err_str = str(e)
                 if ("429" in err_str or "rate_limit" in err_str) and intento < 3:
                     wait = 65 * (intento + 1)
-                    print(f"  Rate limit (intento {intento + 1}/3), esperando {wait}s...")
+                    logger.warning(f"fila_snapshot={i} rate limit (intento {intento + 1}/3), esperando {wait}s")
                     await asyncio.sleep(wait)
                     continue
-                print(f"  ERROR generando respuesta: {e}")
+                logger.error(f"fila_snapshot={i} error generando respuesta: {e}")
                 contadores["ERROR"] = contadores.get("ERROR", 0) + 1
                 procesadas += 1
                 break
         else:
-            print(f"  ERROR tras 3 retries: {last_error}")
+            logger.error(f"fila_snapshot={i} error tras 3 retries: {last_error}")
             contadores["ERROR"] = contadores.get("ERROR", 0) + 1
             procesadas += 1
             continue
@@ -439,15 +546,36 @@ async def procesar_sheet(
             respuesta_cruda, anthropic_client, MODEL,
         )
         contadores[estado] = contadores.get(estado, 0) + 1
-        print(f"  → estado={estado}  tool_calls={tool_calls}  chars={len(respuesta_final)}")
+        logger.info(
+            f"fila_snapshot={i} estado={estado} tool_calls={tool_calls} "
+            f"chars={len(respuesta_final)}"
+        )
 
-        worksheet.update_cell(i, COL_RESPUESTA, respuesta_final)
-        worksheet.update_cell(i, COL_CERRADA_PRODUCTO, "Sí")
+        fila_destino = _resolver_fila_destino(worksheet, i, pregunta, logger)
+        if fila_destino is None:
+            contadores["SKIP_ESCRITURA"] = contadores.get("SKIP_ESCRITURA", 0) + 1
+            procesadas += 1
+            await asyncio.sleep(1)
+            continue
+        match = fila_destino == i
+        if not match:
+            logger.warning(
+                f"desfasaje: fila_snapshot={i} fila_destino={fila_destino} "
+                f"pregunta_hash={p_hash}"
+            )
+        logger.info(
+            f"escritura: fila_snapshot={i} fila_destino={fila_destino} "
+            f"match={match} estado={estado}"
+        )
+
+        worksheet.update_cell(fila_destino, COL_RESPUESTA, respuesta_final)
+        if estado == "OK" or estado == "COMPRIMIDA":
+            worksheet.update_cell(fila_destino, COL_CERRADA_PRODUCTO, "Sí")
 
         procesadas += 1
         await asyncio.sleep(1)  # rate-limit Google Sheets
 
-    print(f"\nResultado: {procesadas} procesadas. Estados: {contadores}")
+    logger.info(f"resultado: {procesadas} procesadas. estados={contadores}")
 
 
 # --- Main ---
@@ -507,30 +635,48 @@ async def main():
             "Y col AF ('Respondido') = 'No'. Combinable con --force-regen."
         ),
     )
+    parser.add_argument(
+        "--not-sent-only",
+        action="store_true",
+        help=(
+            "Criterio amplio: solo procesar filas con col Z vacía y col AF "
+            "('Respondido') distinto de 'Sí'. No mira col AA. Cubre todo lo que "
+            "no tiene respuesta de producto y no se envió aún. Combinable con --force-regen."
+        ),
+    )
     args = parser.parse_args()
 
-    print("Conectando a Google Sheets...")
+    logger, log_path = setup_logging()
+    logger.info(f"log_path={log_path}")
+    logger.info(
+        f"args: sheet_url=<...> force_regen={args.force_regen} from_row={args.from_row} "
+        f"regen_pattern={args.regen_pattern!r} obs_flag={args.obs_flag!r} "
+        f"max={args.max_pendientes} only_row={args.only_row} "
+        f"pending_only={args.pending_only} not_sent_only={args.not_sent_only}"
+    )
+
+    logger.info("conectando a Google Sheets")
     worksheet = conectar_sheet(args.sheet_url)
     filas = worksheet.get_all_values()
-    print(f"Sheet: {worksheet.title} — {len(filas) - 1} filas")
+    logger.info(f"sheet={worksheet.title} filas={len(filas) - 1}")
 
     anthropic_client = AsyncAnthropic()
-    print("Claude API OK.")
+    logger.info("Claude API OK")
 
-    print(f"Conectando al MCP: {MCP_URL}...")
+    logger.info(f"conectando al MCP: {MCP_URL}")
     async with streamablehttp_client(MCP_URL) as (read_stream, write_stream, _):
         async with ClientSession(read_stream, write_stream) as session:
             await session.initialize()
 
             tools = await session.list_tools()
             tool_names = [t.name for t in tools.tools]
-            print(f"MCP conectado. Tools disponibles: {tool_names}")
+            logger.info(f"MCP conectado. tools={tool_names}")
 
             if MCP_SEARCH_TOOL not in tool_names:
-                print(f"ERROR: el MCP no expone {MCP_SEARCH_TOOL}. Abortando.")
+                logger.error(f"el MCP no expone {MCP_SEARCH_TOOL}. Abortando.")
                 sys.exit(1)
             if MCP_FILESYSTEM_TOOL not in tool_names:
-                print(f"ERROR: el MCP no expone {MCP_FILESYSTEM_TOOL}. Abortando.")
+                logger.error(f"el MCP no expone {MCP_FILESYSTEM_TOOL}. Abortando.")
                 sys.exit(1)
 
             await procesar_sheet(
@@ -544,9 +690,10 @@ async def main():
                 max_pendientes=args.max_pendientes,
                 only_row=args.only_row,
                 pending_only=args.pending_only,
+                not_sent_only=args.not_sent_only,
             )
 
-    print("Listo.")
+    logger.info("listo")
 
 
 if __name__ == "__main__":
